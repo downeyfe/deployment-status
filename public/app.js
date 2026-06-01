@@ -225,13 +225,16 @@ async function load() {
   }
 }
 
-function isWorkingHours() {
+function isWorkingHoursInTz(timeZone) {
   const now = new Date();
-  // Check day in UK time (handles BST/GMT automatically)
-  const ukDay = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', weekday: 'short' }).format(now);
-  if (ukDay === 'Sat' || ukDay === 'Sun') return false;
-  const ukHour = parseInt(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: 'numeric', hour12: false }).format(now), 10);
-  return ukHour >= 9 && ukHour < 18;
+  const day = new Intl.DateTimeFormat('en-GB', { timeZone, weekday: 'short' }).format(now);
+  if (day === 'Sat' || day === 'Sun') return false;
+  const hour = parseInt(new Intl.DateTimeFormat('en-GB', { timeZone, hour: 'numeric', hour12: false }).format(now), 10);
+  return hour >= 9 && hour < 18;
+}
+
+function isWorkingHours() {
+  return isWorkingHoursInTz('Europe/London') || isWorkingHoursInTz('Asia/Ho_Chi_Minh');
 }
 
 let autoRefreshTimer = null;
