@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
+import basicAuth from 'express-basic-auth';
 import fetch from 'node-fetch';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -22,6 +23,12 @@ const ENVIRONMENTS = [
     statusPath: '/api/status',
   },
 ];
+
+app.use(basicAuth({
+  users: { [process.env.BASIC_AUTH_USER]: process.env.BASIC_AUTH_PASSWORD },
+  challenge: true,
+  realm: 'Deployment Status',
+}));
 
 app.use(express.static(join(__dirname, 'public')));
 
