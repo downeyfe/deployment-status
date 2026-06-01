@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
-import basicAuth from 'express-basic-auth';
+import session from 'express-session';
 import fetch from 'node-fetch';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -24,11 +24,53 @@ const ENVIRONMENTS = [
   },
 ];
 
-app.use(basicAuth({
-  users: { [process.env.BASIC_AUTH_USER]: process.env.BASIC_AUTH_PASSWORD },
-  challenge: true,
-  realm: 'Deployment Status',
+app.use(express.urlencoded({ extended: false }));
+
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'change-me-in-production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 8 * 60 * 60 * 1000, // 8 hours
+  },
 }));
+
+function requireAuth(req, res, next) {
+  if (req.session?.authenticated) return next();
+  if (req.path.startsWith('/api/')) return res.status(401).json({ error: 'Not authenticated' });
+  res.redirect('/login');
+}
+
+// Public routes
+app.get('/login', (req, res) => {
+  if (req.session?.authenticated) return res.redirect('/');
+  res.sendFile(join(__dirname, 'public/login.html'));
+});
+
+app.post('/login', (req, res) => {
+  const { username, password } = req.body;
+  if (
+    username === process.env.BASIC_AUTH_USER &&
+    password === process.env.BASIC_AUTH_PASSWORD
+  ) {
+    req.session.authenticated = true;
+    return res.redirect('/');
+  }
+  res.redirect('/login?error=1');
+});
+
+app.get('/logout', (req, res) => {
+  req.session.destroy(() => res.redirect('/login'));
+});
+
+// Public static assets
+app.use('/style.css', express.static(join(__dirname, 'public/style.css')));
+
+// All routes below require auth
+app.use(requireAuth);
 
 app.use(express.static(join(__dirname, 'public')));
 
