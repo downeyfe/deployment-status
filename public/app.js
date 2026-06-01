@@ -221,6 +221,27 @@ async function load() {
     grid.innerHTML = `<p class="error-msg">⚠ Failed to load deployment data: ${escHtml(err.message)}</p>`;
   } finally {
     refreshBtn.classList.remove('spinning');
+    scheduleAutoRefresh();
+  }
+}
+
+function isWorkingHours() {
+  const now = new Date();
+  // Check day in UK time (handles BST/GMT automatically)
+  const ukDay = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', weekday: 'short' }).format(now);
+  if (ukDay === 'Sat' || ukDay === 'Sun') return false;
+  const ukHour = parseInt(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: 'numeric', hour12: false }).format(now), 10);
+  return ukHour >= 9 && ukHour < 18;
+}
+
+let autoRefreshTimer = null;
+
+function scheduleAutoRefresh() {
+  clearTimeout(autoRefreshTimer);
+  if (isWorkingHours()) {
+    autoRefreshTimer = setTimeout(() => {
+      load();
+    }, 10 * 60 * 1000);
   }
 }
 
