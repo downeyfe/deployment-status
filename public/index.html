@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deployment Status</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <h1>Deployment Status</h1>
+      <div class="header-actions">
+        <span id="last-updated"></span>
+        <button id="refresh-btn" title="Refresh">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+          Refresh
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div id="config-banner" class="config-banner hidden">
+      <strong>Configuration required:</strong> Set your <code>LINEAR_API_KEY</code> in a <code>.env</code> file to see ticket and PR details.
+    </div>
+    <div id="grid" class="grid"></div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
