@@ -16,7 +16,7 @@ const ENVIRONMENTS = [
     statusPath: '/api/status',
   },
   {
-    name: 'Pre-production',
+    name: 'Preprod',
     slug: 'preprod',
     url: 'https://london.preprod.w3w.io',
     statusPath: '/api/status',
