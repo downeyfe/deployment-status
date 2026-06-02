@@ -241,7 +241,7 @@ async function load() {
     grid.innerHTML = `<p class="error-msg">⚠ Failed to load deployment data: ${escHtml(err.message)}</p>`;
   } finally {
     refreshBtn.classList.remove('spinning');
-    scheduleAutoRefresh();
+    lastLoadTime = Date.now();
   }
 }
 
@@ -257,16 +257,17 @@ function isWorkingHours() {
   return isWorkingHoursInTz('Europe/London') || isWorkingHoursInTz('Asia/Ho_Chi_Minh');
 }
 
-let autoRefreshTimer = null;
+const AUTO_REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes
+let lastLoadTime = null;
 
-function scheduleAutoRefresh() {
-  clearTimeout(autoRefreshTimer);
-  if (isWorkingHours()) {
-    autoRefreshTimer = setTimeout(() => {
-      load();
-    }, 10 * 60 * 1000);
+// Check every minute whether an auto-refresh is due.
+// This keeps running continuously so it resumes automatically when working hours start.
+setInterval(() => {
+  if (!isWorkingHours()) return;
+  if (!lastLoadTime || Date.now() - lastLoadTime >= AUTO_REFRESH_INTERVAL) {
+    load();
   }
-}
+}, 60 * 1000);
 
 refreshBtn.addEventListener('click', load);
 load();
