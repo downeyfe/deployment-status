@@ -487,5 +487,13 @@ setInterval(() => {
   }
 }, 60 * 1000);
 
+// When the tab becomes visible again, trigger a refresh immediately if one is overdue.
+// This compensates for browsers throttling setInterval in background tabs.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  if (!isWorkingHours()) return;
+  if (!lastLoadTime || Date.now() - lastLoadTime >= AUTO_REFRESH_INTERVAL) load();
+});
+
 refreshBtn.addEventListener('click', load);
 load();
