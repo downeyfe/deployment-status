@@ -144,7 +144,7 @@ function parsePRsFromAttachments(attachments) {
     let approvalStatus = null;
     if (state === 'open') {
       const reviews = meta.reviews || [];
-      if (reviews.some(r => r.state === 'changesRequested')) approvalStatus = 'changes_requested';
+      if (reviews.some(r => r.state === 'changes_requested')) approvalStatus = 'changes_requested';
       else if (reviews.some(r => r.state === 'approved')) approvalStatus = 'approved';
       else approvalStatus = 'pending';
     }
@@ -201,7 +201,7 @@ function renderPR(attachments) {
       ? `<span class="pr-reviewers">${pr.reviewers.map(r => {
           const label = r.login ? escAttr(r.login) : 'Pending reviewer';
           const cls = r.state === 'approved' ? 'reviewer-approved'
-            : r.state === 'changesRequested' ? 'reviewer-changes'
+            : r.state === 'changes_requested' ? 'reviewer-changes'
             : r.state === 'commented' ? 'reviewer-commented'
             : 'reviewer-pending';
           return `<img class="reviewer-avatar ${cls}" src="${escAttr(r.avatarUrl)}" alt="${label}" title="${label}" />`;
