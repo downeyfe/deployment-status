@@ -125,35 +125,34 @@ function findDeveloper(issue) {
   if (developerWhitelist.length === 0) return null;
 
   const history = issue.history?.nodes || [];
+  const sorted = [...history].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
-  // Count state transitions per whitelisted actor, and track who moved it to "In Progress"
-  const counts = {};
-  const actors = {};
-  let inProgressMover = null;
+  // Reconstruct who was assigned when the ticket most recently entered "in progress".
+  // Seed currentAssignee from the fromAssignee of the first assignment event — this
+  // captures the original assignee even if they were set at ticket creation with no
+  // explicit history entry.
+  const firstAssignmentEvent = sorted.find(h => h.toAssignee);
+  let currentAssignee = firstAssignmentEvent?.fromAssignee ?? null;
 
-  for (const h of history) {
-    if (!h.actor || !h.toState || !developerWhitelist.includes(h.actor.name)) continue;
-    const name = h.actor.name;
-    counts[name] = (counts[name] || 0) + 1;
-    actors[name] = h.actor;
-    if (!inProgressMover && h.toState.name.toLowerCase() === 'in progress') {
-      inProgressMover = h.actor;
+  let assigneeAtInProgress = null;
+
+  for (const h of sorted) {
+    if (h.toAssignee) currentAssignee = h.toAssignee;
+    if (h.toState?.name.toLowerCase() === 'in progress') {
+      assigneeAtInProgress = currentAssignee;
     }
   }
 
-  if (Object.keys(counts).length === 0) return null;
+  if (assigneeAtInProgress && developerWhitelist.includes(assigneeAtInProgress.name)) {
+    return assigneeAtInProgress;
+  }
 
-  const maxCount = Math.max(...Object.values(counts));
-  const topActors = Object.keys(counts).filter(n => counts[n] === maxCount);
+  // Fall back to current assignee if whitelisted (e.g. never reassigned, no history events)
+  if (issue.assignee && developerWhitelist.includes(issue.assignee.name)) {
+    return issue.assignee;
+  }
 
-  // Single winner
-  if (topActors.length === 1) return actors[topActors[0]];
-
-  // Tie-break: whoever moved it to "In Progress"
-  if (inProgressMover && topActors.includes(inProgressMover.name)) return inProgressMover;
-
-  // Still tied: return first alphabetically for determinism
-  return actors[topActors.sort()[0]];
+  return null;
 }
 
 app.get('/api/linear/:ticketId', async (req, res) => {
@@ -178,7 +177,8 @@ app.get('/api/linear/:ticketId', async (req, res) => {
           nodes {
             createdAt
             toState { name }
-            actor { name avatarUrl }
+            fromAssignee { name avatarUrl }
+            toAssignee { name avatarUrl }
           }
         }
       }
