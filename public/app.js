@@ -246,15 +246,21 @@ function metaRow(label, valueHtml) {
 function renderTicket(ticket) {
   if (ticket.error) return `<p class="error-msg">⚠ ${escHtml(ticket.error)}</p>`;
   if (!ticket) return `<p class="error-msg" style="color:var(--text-muted)">Ticket not found</p>`;
-  return `<div class="ticket-section">
+  return `<a class="ticket-section" href="${escAttr(ticket.url)}" target="_blank" rel="noopener">
     <div class="ticket-top">
-      <a class="ticket-id" href="${escAttr(ticket.url)}" target="_blank" rel="noopener">${escHtml(ticket.identifier)}</a>
-      <span class="ticket-title"><a href="${escAttr(ticket.url)}" target="_blank" rel="noopener">${escHtml(ticket.title)}</a></span>
+      <span class="ticket-id">${escHtml(ticket.identifier)}</span>
+      <span class="ticket-title">${escHtml(ticket.title)}</span>
     </div>
-    ${metaRow('Status', statusPill(ticket.state))}
-    ${metaRow('Assigned to', personHtml(ticket.assignee))}
-    ${ticket.developer ? metaRow('Developed by', personHtml(ticket.developer)) : ''}
-  </div>`;
+    <div class="ticket-meta-grid">
+      <span class="meta-label">Status</span>
+      <span class="meta-value">${statusPill(ticket.state)}</span>
+      <span class="meta-label">Assigned to</span>
+      <span class="meta-value">${personHtml(ticket.assignee)}</span>
+      ${ticket.developer ? `
+      <span class="meta-label">Developed by</span>
+      <span class="meta-value">${personHtml(ticket.developer)}</span>` : ''}
+    </div>
+  </a>`;
 }
 
 async function loadTicketAndPR(card, ticketId) {

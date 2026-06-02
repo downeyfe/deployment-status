@@ -213,7 +213,13 @@ main {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s;
+  cursor: pointer;
 }
+.ticket-section:hover { border-color: var(--accent); }
+.ticket-section:hover .ticket-id { text-decoration: underline; }
 
 .ticket-top {
   display: flex;
@@ -227,31 +233,21 @@ main {
   font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
   color: var(--accent);
   white-space: nowrap;
-  text-decoration: none;
 }
-.ticket-id:hover { text-decoration: underline; }
 
 .ticket-title {
   font-size: 0.9rem;
   font-weight: 500;
   line-height: 1.4;
   flex: 1;
+  color: var(--text);
 }
 
-.ticket-title a { color: var(--text); text-decoration: none; }
-.ticket-title a:hover { color: var(--accent); }
-
-.ticket-meta {
-  display: flex;
-  flex-wrap: wrap;
+.ticket-meta-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.45rem 0.75rem;
   align-items: center;
-  gap: 0.5rem;
-}
-
-.meta-row {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
 }
 
 .meta-label {
@@ -260,7 +256,6 @@ main {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-muted);
-  min-width: 80px;
 }
 
 .meta-value {
@@ -364,7 +359,8 @@ main {
 .badge-changes  { background: #3a2010; color: var(--yellow);      border: 1px solid #5a3a10; }
 .badge-awaiting { background: #2a2a2a; color: var(--text-muted);  border: 1px solid var(--border); }
 
-.pr-badges { display: flex; flex-direction: column; gap: 0.3rem; align-items: flex-end; flex-shrink: 0; }
+.pr-badges { display: flex; flex-direction: column; gap: 0.3rem; flex-shrink: 0; align-self: flex-start; margin-left: auto; }
+.pr-badges .badge { align-self: flex-end; }
 
 .pr-reviewers { display: inline-flex; align-items: center; gap: 0.25rem; margin-left: 0.5rem; vertical-align: middle; }
 
