@@ -246,6 +246,31 @@ main {
   gap: 0.5rem;
 }
 
+.meta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.meta-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  min-width: 80px;
+}
+
+.meta-value {
+  display: flex;
+  align-items: center;
+}
+
+.person-unknown {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
 /* Status pill */
 .status-pill {
   display: inline-flex;

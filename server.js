@@ -1,4 +1,6 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+dotenv.config();                        // .env
+dotenv.config({ path: '.env.local' }); // .env.local (local overrides, gitignored)
 import express from 'express';
 import session from 'express-session';
 import fetch from 'node-fetch';
@@ -115,6 +117,30 @@ app.get('/api/deployments', async (req, res) => {
 });
 
 // Fetch Linear ticket info
+const developerWhitelist = process.env.DEVELOPER_WHITELIST
+  ? process.env.DEVELOPER_WHITELIST.split(',').map(n => n.trim()).filter(Boolean)
+  : [];
+
+function findDeveloper(issue) {
+  // Search history (most recent first) for a state change by a whitelisted user
+  if (developerWhitelist.length > 0) {
+    const history = [...(issue.history?.nodes || [])].sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    );
+    const match = history.find(h => h.actor && h.toState && developerWhitelist.includes(h.actor.name));
+    if (match) return match.actor;
+  }
+
+  // Fallback: author from PR attachment metadata
+  const prAttachment = issue.attachments?.nodes?.find(
+    a => a.url?.includes('github.com') && a.url.includes('/pull/')
+  );
+  const author = prAttachment?.metadata?.author || prAttachment?.metadata?.createdBy;
+  if (author) return { name: author, avatarUrl: null };
+
+  return null;
+}
+
 app.get('/api/linear/:ticketId', async (req, res) => {
   const { ticketId } = req.params;
   const apiKey = process.env.LINEAR_API_KEY;
@@ -133,6 +159,13 @@ app.get('/api/linear/:ticketId', async (req, res) => {
         priorityLabel
         labels { nodes { name color } }
         attachments { nodes { url title subtitle metadata } }
+        history(first: 50) {
+          nodes {
+            createdAt
+            toState { name }
+            actor { name avatarUrl }
+          }
+        }
       }
     }
   `;
@@ -148,7 +181,8 @@ app.get('/api/linear/:ticketId', async (req, res) => {
     });
     const data = await response.json();
     if (data.errors) throw new Error(data.errors[0].message);
-    res.json(data.data.issue);
+    const issue = data.data.issue;
+    res.json({ ...issue, developer: findDeveloper(issue) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -103,6 +103,22 @@ function repoFromUrl(url) {
   return m ? m[1] : 'GitHub';
 }
 
+function personHtml(person) {
+  if (!person) return `<span class="person-unknown">Unassigned</span>`;
+  const initials = person.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  const avatar = person.avatarUrl
+    ? `<img class="avatar" src="${escAttr(person.avatarUrl)}" alt="${escAttr(person.name)}" />`
+    : `<span class="avatar-placeholder">${escHtml(initials)}</span>`;
+  return `<span class="assignee">${avatar} ${escHtml(person.name)}</span>`;
+}
+
+function metaRow(label, valueHtml) {
+  return `<div class="meta-row">
+    <span class="meta-label">${escHtml(label)}</span>
+    <span class="meta-value">${valueHtml}</span>
+  </div>`;
+}
+
 function renderTicket(ticket) {
   if (ticket.error) return `<p class="error-msg">⚠ ${escHtml(ticket.error)}</p>`;
   if (!ticket) return `<p class="error-msg" style="color:var(--text-muted)">Ticket not found</p>`;
@@ -111,10 +127,9 @@ function renderTicket(ticket) {
       <span class="ticket-id">${escHtml(ticket.identifier)}</span>
       <span class="ticket-title"><a href="${escAttr(ticket.url)}" target="_blank" rel="noopener">${escHtml(ticket.title)}</a></span>
     </div>
-    <div class="ticket-meta">
-      ${statusPill(ticket.state)}
-      ${assigneeHtml(ticket.assignee)}
-    </div>
+    ${metaRow('Status', statusPill(ticket.state))}
+    ${metaRow('Assigned to', personHtml(ticket.assignee))}
+    ${ticket.developer ? metaRow('Developed by', personHtml(ticket.developer)) : ''}
   </div>`;
 }
 
