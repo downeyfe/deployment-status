@@ -9,18 +9,30 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const ENVIRONMENTS = [
+const APPLICATIONS = [
   {
-    name: 'Staging',
-    slug: 'staging',
-    url: 'https://map.london.live.staging.w3w.io',
+    name: 'Map',
     statusPath: '/api/status',
+    environments: [
+      { name: 'Staging', slug: 'staging', url: 'https://map.london.live.staging.w3w.io' },
+      { name: 'Preprod', slug: 'preprod', url: 'https://london.preprod.w3w.io' },
+    ],
   },
   {
-    name: 'Preprod',
-    slug: 'preprod',
-    url: 'https://london.preprod.w3w.io',
-    statusPath: '/api/status',
+    name: 'Gateway',
+    statusPath: '/healthz',
+    environments: [
+      { name: 'Staging', slug: 'staging', url: 'https://gateway.london.live.staging.w3w.io' },
+      { name: 'Preprod', slug: 'preprod', url: 'https://gateway.london.preprod.w3w.io' },
+    ],
+  },
+  {
+    name: 'Auth',
+    statusPath: '/api/healthz',
+    environments: [
+      { name: 'Staging', slug: 'staging', url: 'https://auth.london.live.staging.w3w.io' },
+      { name: 'Preprod', slug: 'preprod', url: 'https://auth.london.preprod.w3w.io' },
+    ],
   },
 ];
 
@@ -74,29 +86,29 @@ app.use(requireAuth);
 
 app.use(express.static(join(__dirname, 'public')));
 
-// Fetch deployment status for all environments
+async function fetchEnvStatus(env, statusPath) {
+  try {
+    const response = await fetch(`${env.url}${statusPath}`, {
+      timeout: 8000,
+      headers: { 'Accept': 'application/json' },
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    const image = data.image || '';
+    const ticketMatch = image.match(/([A-Z]+-\d+)/);
+    return { ...env, image, ticketId: ticketMatch ? ticketMatch[1] : null, error: null };
+  } catch (err) {
+    return { ...env, image: null, ticketId: null, error: err.message };
+  }
+}
+
+// Fetch deployment status for all applications and environments
 app.get('/api/deployments', async (req, res) => {
   const results = await Promise.all(
-    ENVIRONMENTS.map(async (env) => {
-      try {
-        const response = await fetch(`${env.url}${env.statusPath}`, {
-          timeout: 8000,
-          headers: { 'Accept': 'application/json' },
-        });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
-        const image = data.image || '';
-        const ticketMatch = image.match(/([A-Z]+-\d+)/);
-        return {
-          ...env,
-          image,
-          ticketId: ticketMatch ? ticketMatch[1] : null,
-          error: null,
-        };
-      } catch (err) {
-        return { ...env, image: null, ticketId: null, error: err.message };
-      }
-    })
+    APPLICATIONS.map(async (app) => ({
+      name: app.name,
+      environments: await Promise.all(app.environments.map(env => fetchEnvStatus(env, app.statusPath))),
+    }))
   );
   res.json(results);
 });

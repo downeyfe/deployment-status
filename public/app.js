@@ -186,34 +186,54 @@ function buildCard(env) {
   return card;
 }
 
+function buildAppSection(appName) {
+  const section = document.createElement('section');
+  section.className = 'app-section';
+  section.innerHTML = `<h2 class="app-title">${escHtml(appName)}</h2><div class="app-grid"></div>`;
+  return section;
+}
+
+function skeletonSection(appName) {
+  const section = buildAppSection(appName);
+  const appGrid = section.querySelector('.app-grid');
+  [1, 2].forEach(() => {
+    const ph = document.createElement('div');
+    ph.className = 'card';
+    ph.innerHTML = `<div class="card-header"><h2>&nbsp;</h2></div><div class="card-body">${skeletonRows()}</div>`;
+    appGrid.appendChild(ph);
+  });
+  return section;
+}
+
 async function load() {
   refreshBtn.classList.add('spinning');
   grid.innerHTML = '';
   configWarningShown = false;
   configBanner.classList.add('hidden');
 
-  // Add skeleton cards immediately
-  const placeholders = [1, 2].map(() => {
-    const ph = document.createElement('div');
-    ph.className = 'card';
-    ph.innerHTML = `<div class="card-header"><h2>&nbsp;</h2></div>
-      <div class="card-body">${skeletonRows()}</div>`;
-    grid.appendChild(ph);
-    return ph;
+  // Skeleton sections
+  const APP_NAMES = ['Map', 'Gateway', 'Auth'];
+  const skeletonSections = APP_NAMES.map(name => {
+    const s = skeletonSection(name);
+    grid.appendChild(s);
+    return s;
   });
 
   try {
     const res = await fetch('/api/deployments');
-    const envs = await res.json();
+    const apps = await res.json();
 
-    // Replace skeletons with real cards
-    envs.forEach((env, i) => {
-      const card = buildCard(env);
-      grid.replaceChild(card, placeholders[i]);
+    apps.forEach((app, i) => {
+      const section = buildAppSection(app.name);
+      const appGrid = section.querySelector('.app-grid');
 
-      if (env.ticketId) {
-        loadTicketAndPR(card, env.ticketId);
-      }
+      app.environments.forEach(env => {
+        const card = buildCard(env);
+        appGrid.appendChild(card);
+        if (env.ticketId) loadTicketAndPR(card, env.ticketId);
+      });
+
+      grid.replaceChild(section, skeletonSections[i]);
     });
 
     lastUpdated.textContent = `Updated ${new Date().toLocaleTimeString()}`;
