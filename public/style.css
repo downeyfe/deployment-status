@@ -400,6 +400,61 @@ main {
 }
 .link:hover { text-decoration: underline; }
 
+/* Ticket override */
+.ticket-override-display { display: inline-flex; align-items: center; gap: 0.4rem; }
+
+.edit-ticket-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.1rem 0.2rem;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+.deploy-row:hover .edit-ticket-btn { opacity: 1; }
+.edit-ticket-btn:hover { color: var(--accent); }
+
+.override-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--yellow);
+  background: rgba(240,192,64,0.12);
+  border: 1px solid rgba(240,192,64,0.3);
+  border-radius: 4px;
+  padding: 0.1em 0.4em;
+}
+
+.ticket-edit-form { display: inline-flex; align-items: center; gap: 0.35rem; }
+
+.ticket-edit-input {
+  background: var(--surface-2);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 0.82rem;
+  padding: 0.2rem 0.4rem;
+  width: 9rem;
+  outline: none;
+}
+
+.ticket-edit-confirm, .ticket-edit-cancel {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.4rem;
+  transition: color 0.15s, border-color 0.15s;
+}
+.ticket-edit-confirm:hover { color: var(--green); border-color: var(--green); }
+.ticket-edit-cancel:hover  { color: var(--red);   border-color: var(--red); }
+
 /* Divider */
 .divider { border: none; border-top: 1px solid var(--border); }
 

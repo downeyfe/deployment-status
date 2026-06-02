@@ -5,6 +5,62 @@ const configBanner = document.getElementById('config-banner');
 
 let configWarningShown = false;
 
+// ── Local storage overrides ───────────────────────────────────────────────────
+const OVERRIDES_KEY = 'deployment-status-overrides';
+const ONE_MONTH = 30 * 24 * 60 * 60 * 1000;
+
+function loadOverrides() {
+  try { return JSON.parse(localStorage.getItem(OVERRIDES_KEY) || '{}'); }
+  catch { return {}; }
+}
+
+function saveOverrides(overrides) {
+  localStorage.setItem(OVERRIDES_KEY, JSON.stringify(overrides));
+}
+
+function getOverride(image) {
+  const overrides = loadOverrides();
+  const entry = overrides[image];
+  if (!entry) return null;
+  if (Date.now() - entry.savedAt > ONE_MONTH) {
+    delete overrides[image];
+    saveOverrides(overrides);
+    return null;
+  }
+  return entry.ticketId;
+}
+
+function setOverride(image, ticketId) {
+  const overrides = loadOverrides();
+  if (ticketId) {
+    overrides[image] = { ticketId, savedAt: Date.now() };
+  } else {
+    delete overrides[image]; // clear override if empty
+  }
+  saveOverrides(overrides);
+}
+
+function clearAllOverrides() {
+  localStorage.removeItem(OVERRIDES_KEY);
+}
+
+// Clear overrides and expired entries on load
+(function pruneExpired() {
+  const overrides = loadOverrides();
+  let changed = false;
+  for (const [key, entry] of Object.entries(overrides)) {
+    if (Date.now() - entry.savedAt > ONE_MONTH) { delete overrides[key]; changed = true; }
+  }
+  if (changed) saveOverrides(overrides);
+})();
+
+// Clear overrides on sign out
+document.getElementById('logout-btn')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  clearAllOverrides();
+  window.location.href = '/logout';
+});
+
 function prIcon(state, merged, draft) {
   const color = merged ? '#b97cf5' : draft ? '#7b82a8' : state === 'open' ? '#3dd68c' : '#f06070';
   return `<svg class="pr-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -161,6 +217,11 @@ function buildCard(env) {
   const card = document.createElement('div');
   card.className = 'card';
   card.dataset.slug = env.slug;
+  card.dataset.image = env.image || '';
+
+  // Apply local override if present
+  const overriddenTicketId = env.image ? getOverride(env.image) : null;
+  const ticketId = overriddenTicketId || env.ticketId;
 
   let bodyHtml = '';
 
@@ -173,7 +234,27 @@ function buildCard(env) {
       ? `<code>${escHtml(env.image)}</code>`
       : `<span style="color:var(--text-muted)">—</span>`;
 
-    const ticketSection = env.ticketId
+    const ticketDisplay = ticketId
+      ? `<span class="ticket-override-display">
+          <code class="ticket-id-value">${escHtml(ticketId)}</code>
+          ${overriddenTicketId ? `<span class="override-badge" title="Manually overridden">edited</span>` : ''}
+          <button class="edit-ticket-btn" title="Edit ticket ID" aria-label="Edit ticket ID">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </button>
+        </span>`
+      : `<span style="color:var(--text-muted)">—
+          <button class="edit-ticket-btn" title="Set ticket ID" aria-label="Set ticket ID" style="margin-left:0.4rem">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </button>
+        </span>`;
+
+    const ticketSection = ticketId
       ? `<div class="ticket-placeholder">${skeletonRows()}</div>
          <hr class="divider" />
          <div class="pr-placeholder">${skeletonRows()}</div>`
@@ -184,10 +265,10 @@ function buildCard(env) {
         <span class="deploy-label">Image</span>
         <span class="deploy-value">${imageHtml}</span>
       </div>
-      ${env.ticketId ? `<div class="deploy-row">
+      <div class="deploy-row">
         <span class="deploy-label">Ticket</span>
-        <span class="deploy-value"><code>${escHtml(env.ticketId)}</code></span>
-      </div>` : ''}
+        <span class="deploy-value ticket-row-value">${ticketDisplay}</span>
+      </div>
       ${ticketSection}
     </div>`;
   }
@@ -198,7 +279,54 @@ function buildCard(env) {
   </div>
   ${bodyHtml}`;
 
+  // Wire up the edit button
+  card.querySelector('.edit-ticket-btn')?.addEventListener('click', () => startTicketEdit(card, env, ticketId));
+
   return card;
+}
+
+function startTicketEdit(card, env, currentTicketId) {
+  const ticketRowValue = card.querySelector('.ticket-row-value');
+  const original = ticketRowValue.innerHTML;
+
+  ticketRowValue.innerHTML = `
+    <span class="ticket-edit-form">
+      <input class="ticket-edit-input" type="text" value="${escAttr(currentTicketId || '')}" placeholder="TT-12345" spellcheck="false" />
+      <button class="ticket-edit-confirm" title="Confirm">✓</button>
+      <button class="ticket-edit-cancel" title="Cancel">✕</button>
+    </span>`;
+
+  const input = ticketRowValue.querySelector('.ticket-edit-input');
+  input.focus();
+  input.select();
+
+  const confirm = () => {
+    const newId = input.value.trim().toUpperCase();
+    if (newId && newId !== (env.ticketId || '').toUpperCase()) {
+      setOverride(env.image, newId);
+    } else if (!newId) {
+      setOverride(env.image, null); // clear override
+    }
+    // Rebuild the card with new override applied
+    const newEnv = { ...env };
+    const section = card.closest('.app-section');
+    const appGrid = card.parentElement;
+    const newCard = buildCard(newEnv);
+    appGrid.replaceChild(newCard, card);
+    const resolvedId = getOverride(newEnv.image) || newEnv.ticketId;
+    if (resolvedId) loadTicketAndPR(newCard, resolvedId);
+  };
+
+  const cancel = () => { ticketRowValue.innerHTML = original;
+    ticketRowValue.querySelector('.edit-ticket-btn')?.addEventListener('click', () => startTicketEdit(card, env, currentTicketId));
+  };
+
+  ticketRowValue.querySelector('.ticket-edit-confirm').addEventListener('click', confirm);
+  ticketRowValue.querySelector('.ticket-edit-cancel').addEventListener('click', cancel);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') confirm();
+    if (e.key === 'Escape') cancel();
+  });
 }
 
 function buildAppSection(appName) {
@@ -245,7 +373,8 @@ async function load() {
       app.environments.forEach(env => {
         const card = buildCard(env);
         appGrid.appendChild(card);
-        if (env.ticketId) loadTicketAndPR(card, env.ticketId);
+        const resolvedTicketId = (env.image && getOverride(env.image)) || env.ticketId;
+        if (resolvedTicketId) loadTicketAndPR(card, resolvedTicketId);
       });
 
       grid.replaceChild(section, skeletonSections[i]);
