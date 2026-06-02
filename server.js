@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();                        // .env
 dotenv.config({ path: '.env.local' }); // .env.local (local overrides, gitignored)
 import express from 'express';
-import session from 'express-session';
+import cookieSession from 'cookie-session';
 import fetch from 'node-fetch';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -41,16 +41,13 @@ const APPLICATIONS = [
 app.set('trust proxy', 1);
 app.use(express.urlencoded({ extended: false }));
 
-app.use(session({
+app.use(cookieSession({
+  name: 'session',
   secret: process.env.SESSION_SECRET || 'change-me-in-production',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-  },
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax',
+  maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
 }));
 
 function requireAuth(req, res, next) {
@@ -78,7 +75,8 @@ app.post('/login', (req, res) => {
 });
 
 app.get('/logout', (req, res) => {
-  req.session.destroy(() => res.redirect('/login'));
+  req.session = null;
+  res.redirect('/login');
 });
 
 // Public static assets
