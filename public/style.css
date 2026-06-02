@@ -227,7 +227,9 @@ main {
   font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
   color: var(--accent);
   white-space: nowrap;
+  text-decoration: none;
 }
+.ticket-id:hover { text-decoration: underline; }
 
 .ticket-title {
   font-size: 0.9rem;

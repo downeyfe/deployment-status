@@ -122,23 +122,38 @@ const developerWhitelist = process.env.DEVELOPER_WHITELIST
   : [];
 
 function findDeveloper(issue) {
-  // Search history (most recent first) for a state change by a whitelisted user
-  if (developerWhitelist.length > 0) {
-    const history = [...(issue.history?.nodes || [])].sort(
-      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-    );
-    const match = history.find(h => h.actor && h.toState && developerWhitelist.includes(h.actor.name));
-    if (match) return match.actor;
+  if (developerWhitelist.length === 0) return null;
+
+  const history = issue.history?.nodes || [];
+
+  // Count state transitions per whitelisted actor, and track who moved it to "In Progress"
+  const counts = {};
+  const actors = {};
+  let inProgressMover = null;
+
+  for (const h of history) {
+    if (!h.actor || !h.toState || !developerWhitelist.includes(h.actor.name)) continue;
+    const name = h.actor.name;
+    counts[name] = (counts[name] || 0) + 1;
+    actors[name] = h.actor;
+    if (!inProgressMover && h.toState.name.toLowerCase() === 'in progress') {
+      inProgressMover = h.actor;
+    }
   }
 
-  // Fallback: author from PR attachment metadata
-  const prAttachment = issue.attachments?.nodes?.find(
-    a => a.url?.includes('github.com') && a.url.includes('/pull/')
-  );
-  const author = prAttachment?.metadata?.author || prAttachment?.metadata?.createdBy;
-  if (author) return { name: author, avatarUrl: null };
+  if (Object.keys(counts).length === 0) return null;
 
-  return null;
+  const maxCount = Math.max(...Object.values(counts));
+  const topActors = Object.keys(counts).filter(n => counts[n] === maxCount);
+
+  // Single winner
+  if (topActors.length === 1) return actors[topActors[0]];
+
+  // Tie-break: whoever moved it to "In Progress"
+  if (inProgressMover && topActors.includes(inProgressMover.name)) return inProgressMover;
+
+  // Still tied: return first alphabetically for determinism
+  return actors[topActors.sort()[0]];
 }
 
 app.get('/api/linear/:ticketId', async (req, res) => {

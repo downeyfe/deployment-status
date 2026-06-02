@@ -180,7 +180,7 @@ function renderTicket(ticket) {
   if (!ticket) return `<p class="error-msg" style="color:var(--text-muted)">Ticket not found</p>`;
   return `<div class="ticket-section">
     <div class="ticket-top">
-      <span class="ticket-id">${escHtml(ticket.identifier)}</span>
+      <a class="ticket-id" href="${escAttr(ticket.url)}" target="_blank" rel="noopener">${escHtml(ticket.identifier)}</a>
       <span class="ticket-title"><a href="${escAttr(ticket.url)}" target="_blank" rel="noopener">${escHtml(ticket.title)}</a></span>
     </div>
     ${metaRow('Status', statusPill(ticket.state))}
