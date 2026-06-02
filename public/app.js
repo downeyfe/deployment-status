@@ -77,6 +77,13 @@ function prBadge(pr) {
   return '';
 }
 
+function approvalBadge(approvalStatus) {
+  if (!approvalStatus) return '';
+  if (approvalStatus === 'approved')          return `<span class="badge badge-approved">Approved</span>`;
+  if (approvalStatus === 'changes_requested') return `<span class="badge badge-changes">Changes requested</span>`;
+  return `<span class="badge badge-awaiting">Awaiting review</span>`;
+}
+
 function statusPill(state) {
   if (!state) return '';
   const colorMap = {
@@ -116,26 +123,69 @@ function skeletonRows() {
 
 function parsePRsFromAttachments(attachments) {
   if (!attachments?.nodes) return [];
-  const ghPRs = attachments.nodes.filter(a => a.url?.includes('github.com') && a.url.includes('/pull/'));
+  const ghPRs = attachments.nodes.filter(a =>
+    a.url?.includes('github.com') &&
+    a.url.includes('/pull/') &&
+    !a.url.includes('/infrastructure-manifests/'));
   if (!ghPRs.length) return [];
 
-  // Prefer PRs whose title looks like a feature branch (e.g. "[TT-1234]" prefix),
-  // falling back to all GitHub PRs if none match.
-  const featurePRs = ghPRs.filter(a => /^\[?[A-Z]+-\d+\]?/.test(a.title || ''));
-  const nodes = featurePRs.length ? featurePRs : ghPRs;
+  const nodes = ghPRs;
 
   return nodes.map(node => {
     const meta = node.metadata || {};
-    const merged = meta.merged || meta.state === 'merged';
-    const state = merged ? 'merged' : (meta.state || 'open');
+    // meta.status values: "open", "inReview", "draft", "closed", "merged"
+    const status = meta.status || 'open';
+    const merged = status === 'merged' || !!meta.mergedAt;
+    const draft = status === 'draft' || !!meta.draft;
+    const state = merged ? 'merged' : draft ? 'draft' : status === 'closed' ? 'closed' : 'open';
+
+    // Derive approval status from reviews (only meaningful for open PRs)
+    let approvalStatus = null;
+    if (state === 'open') {
+      const reviews = meta.reviews || [];
+      if (reviews.some(r => r.state === 'changesRequested')) approvalStatus = 'changes_requested';
+      else if (reviews.some(r => r.state === 'approved')) approvalStatus = 'approved';
+      else approvalStatus = 'pending';
+    }
+
+    // Build reviewer list for open PRs: reviewed + pending (requested but not yet reviewed)
+    let reviewers = [];
+    if (state === 'open') {
+      const reviews = meta.reviews || [];
+      const requestedIds = (meta.reviewers || []).map(String);
+
+      // Most recent review per reviewer
+      const reviewMap = new Map();
+      for (const r of [...reviews].sort((a, b) => new Date(a.submittedAt) - new Date(b.submittedAt))) {
+        reviewMap.set(String(r.reviewerId), r);
+      }
+
+      reviewers = [
+        ...[...reviewMap.values()].map(r => ({
+          login: r.reviewerLogin,
+          avatarUrl: r.reviewerAvatarUrl || `https://avatars.githubusercontent.com/u/${r.reviewerId}?v=4`,
+          state: r.state,
+        })),
+        ...requestedIds
+          .filter(id => !reviewMap.has(id))
+          .map(id => ({
+            login: null,
+            avatarUrl: `https://avatars.githubusercontent.com/u/${id}?v=4`,
+            state: 'pending',
+          })),
+      ];
+    }
+
     const numMatch = node.url.match(/\/pull\/(\d+)/);
     return {
       url: node.url,
       title: node.title || '',
       state,
       merged,
-      draft: meta.draft || false,
+      draft,
       number: meta.number || (numMatch ? numMatch[1] : ''),
+      approvalStatus,
+      reviewers,
     };
   });
 }
@@ -143,15 +193,30 @@ function parsePRsFromAttachments(attachments) {
 function renderPR(attachments) {
   const prs = parsePRsFromAttachments(attachments);
   if (!prs.length) return `<p class="error-msg" style="color:var(--text-muted)">No pull request found</p>`;
-  return prs.map(pr => `
+  return prs.map(pr => {
+    const reviewerAvatars = pr.reviewers.length
+      ? `<span class="pr-reviewers">${pr.reviewers.map(r => {
+          const label = r.login ? escAttr(r.login) : 'Pending reviewer';
+          const cls = r.state === 'approved' ? 'reviewer-approved'
+            : r.state === 'changesRequested' ? 'reviewer-changes'
+            : r.state === 'commented' ? 'reviewer-commented'
+            : 'reviewer-pending';
+          return `<img class="reviewer-avatar ${cls}" src="${escAttr(r.avatarUrl)}" alt="${label}" title="${label}" />`;
+        }).join('')}</span>`
+      : '';
+    return `
     <a class="pr-section" href="${escAttr(pr.url)}" target="_blank" rel="noopener">
       ${prIcon(pr.state, pr.merged, pr.draft)}
       <span class="pr-info">
         <span class="pr-title">${pr.number ? `#${pr.number} ` : ''}${escHtml(pr.title)}</span>
-        <span class="pr-sub">${escHtml(repoFromUrl(pr.url))}</span>
+        <span class="pr-sub">${escHtml(repoFromUrl(pr.url))}${reviewerAvatars}</span>
       </span>
-      ${prBadge(pr)}
-    </a>`).join('');
+      <span class="pr-badges">
+        ${prBadge(pr)}
+        ${approvalBadge(pr.approvalStatus)}
+      </span>
+    </a>`;
+  }).join('');
 }
 
 function repoFromUrl(url) {

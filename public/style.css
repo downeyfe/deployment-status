@@ -356,10 +356,30 @@ main {
   flex-shrink: 0;
   align-self: flex-start;
 }
-.badge-open    { background: #1a3a1a; color: var(--green);  border: 1px solid #2a5a2a; }
-.badge-closed  { background: #3a1a1a; color: var(--red);    border: 1px solid #5a2a2a; }
-.badge-merged  { background: #2a1a3a; color: var(--purple); border: 1px solid #4a2a5a; }
-.badge-draft   { background: #2a2a2a; color: var(--text-muted); border: 1px solid var(--border); }
+.badge-open     { background: #1a3a1a; color: var(--green);       border: 1px solid #2a5a2a; }
+.badge-closed   { background: #3a1a1a; color: var(--red);         border: 1px solid #5a2a2a; }
+.badge-merged   { background: #2a1a3a; color: var(--purple);      border: 1px solid #4a2a5a; }
+.badge-draft    { background: #2a2a2a; color: var(--text-muted);  border: 1px solid var(--border); }
+.badge-approved { background: #1a3a1a; color: var(--green);       border: 1px solid #2a5a2a; }
+.badge-changes  { background: #3a2010; color: var(--yellow);      border: 1px solid #5a3a10; }
+.badge-awaiting { background: #2a2a2a; color: var(--text-muted);  border: 1px solid var(--border); }
+
+.pr-badges { display: flex; flex-direction: column; gap: 0.3rem; align-items: flex-end; flex-shrink: 0; }
+
+.pr-reviewers { display: inline-flex; align-items: center; gap: 0.25rem; margin-left: 0.5rem; vertical-align: middle; }
+
+.reviewer-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.reviewer-approved   { border-color: var(--green); }
+.reviewer-changes    { border-color: var(--yellow); }
+.reviewer-commented  { border-color: var(--border); }
+.reviewer-pending    { border-color: var(--border); opacity: 0.5; }
 
 /* Error / loading / skeleton states */
 .error-msg {
