@@ -36,6 +36,7 @@ const APPLICATIONS = [
   },
 ];
 
+app.set('trust proxy', 1);
 app.use(express.urlencoded({ extended: false }));
 
 app.use(session({
