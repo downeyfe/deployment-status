@@ -126,7 +126,8 @@ function parsePRsFromAttachments(attachments) {
   const ghPRs = attachments.nodes.filter(a =>
     a.url?.includes('github.com') &&
     a.url.includes('/pull/') &&
-    !a.url.includes('/infrastructure-manifests/'));
+    !a.url.includes('/infrastructure-manifests/') &&
+    !a.url.includes('/aws/'));
   if (!ghPRs.length) return [];
 
   const nodes = ghPRs;
@@ -154,9 +155,11 @@ function parsePRsFromAttachments(attachments) {
       const reviews = meta.reviews || [];
       const requestedIds = (meta.reviewers || []).map(String);
 
-      // Most recent review per reviewer
+      // Most recent review per reviewer, excluding the PR author
       const reviewMap = new Map();
       for (const r of [...reviews].sort((a, b) => new Date(a.submittedAt) - new Date(b.submittedAt))) {
+        if (r.reviewerLogin && r.reviewerLogin === meta.userLogin) continue;
+        if (String(r.reviewerId) === String(meta.userId)) continue;
         reviewMap.set(String(r.reviewerId), r);
       }
 
