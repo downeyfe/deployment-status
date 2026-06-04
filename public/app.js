@@ -222,6 +222,23 @@ function renderPR(attachments) {
   }).join('');
 }
 
+function imageAge(image) {
+  if (!image) return null;
+  const m = image.match(/-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})/);
+  if (!m) return null;
+  const date = new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z`);
+  if (isNaN(date.getTime())) return null;
+  const diff = Date.now() - date.getTime();
+  if (diff < 0) return null;
+  const mins  = Math.floor(diff / 60000);
+  const hours = Math.floor(mins / 60);
+  const days  = Math.floor(hours / 24);
+  if (days  > 0) return `${days}d ago`;
+  if (hours > 0) return `${hours}h ago`;
+  if (mins  > 0) return `${mins}m ago`;
+  return 'just now';
+}
+
 function repoFromUrl(url) {
   const m = url.match(/github\.com\/[^/]+\/([^/]+)\/pull/);
   return m ? m[1] : 'GitHub';
@@ -347,9 +364,13 @@ function buildCard(env) {
     </div>`;
   }
 
+  const age = imageAge(env.image);
   card.innerHTML = `<div class="card-header">
     <h2>${escHtml(env.name)}</h2>
-    <span class="env-url"><a href="${escAttr(env.url)}" target="_blank" rel="noopener">${escHtml(env.url)}</a></span>
+    <span class="header-right">
+      ${age ? `<span class="image-age">${escHtml(age)}</span>` : ''}
+      <span class="env-url"><a href="${escAttr(env.url)}" target="_blank" rel="noopener">${escHtml(env.url)}</a></span>
+    </span>
   </div>
   ${bodyHtml}`;
 
