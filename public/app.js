@@ -368,7 +368,7 @@ function buildCard(env) {
   card.innerHTML = `<div class="card-header">
     <h2>${escHtml(env.name)}</h2>
     <span class="header-right">
-      ${age ? `<span class="image-age">${escHtml(age)}</span>` : ''}
+      ${age ? `<span class="image-age">Image created ${escHtml(age)}</span>` : ''}
       <span class="env-url"><a href="${escAttr(env.url)}" target="_blank" rel="noopener">${escHtml(env.url)}</a></span>
     </span>
   </div>
