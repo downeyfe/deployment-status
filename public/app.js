@@ -226,10 +226,33 @@ function imageAge(image) {
   if (!image) return null;
   const m = image.match(/-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})/);
   if (!m) return null;
-  const date = new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z`);
-  if (isNaN(date.getTime())) return null;
-  const diff = Date.now() - date.getTime();
-  if (diff < 0) return null;
+  const [, yr, mo, dy, hr, mn, sc] = m;
+  const now = Date.now();
+
+  // Timestamps are in Europe/London local time, 12-hour format (no AM/PM indicator).
+  // Try both AM and PM interpretations; pick the most recent past UTC time.
+  const date = [parseInt(hr), (parseInt(hr) + 12) % 24].map(h => {
+    // Treat the parsed values as London local time and convert to UTC.
+    // Construct an approximate UTC date, then measure the London offset at that moment.
+    const approx = new Date(Date.UTC(+yr, +mo - 1, +dy, h, +mn, +sc));
+    const parts = Object.fromEntries(
+      new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Europe/London',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false,
+      }).formatToParts(approx)
+        .filter(p => p.type !== 'literal')
+        .map(p => [p.type, +p.value])
+    );
+    const londonAsUtcMs = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+    const offsetMs = londonAsUtcMs - approx.getTime();
+    return new Date(approx.getTime() - offsetMs);
+  }).filter(d => !isNaN(d.getTime()) && now >= d.getTime())
+    .sort((a, b) => b - a)[0];
+
+  if (!date) return null;
+  const diff = now - date.getTime();
   const mins  = Math.floor(diff / 60000);
   const hours = Math.floor(mins / 60);
   const days  = Math.floor(hours / 24);
